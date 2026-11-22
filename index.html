@@ -33,6 +33,10 @@ input,select{width:100%;padding:13px 14px;border-radius:14px;border:1px solid va
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
 .sh{width:min(520px,100%);padding:22px 18px calc(22px + env(safe-area-inset-bottom,0px));border-radius:28px 28px 0 0;background:color-mix(in srgb,var(--bg1) 90%,transparent);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid var(--gb)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(100px + env(safe-area-inset-bottom,0px));padding:12px 18px;z-index:30;border-radius:999px;font-size:14px}
+.pick{position:relative;display:block;overflow:hidden;border-radius:22px;cursor:pointer;background:var(--glass);border:1px solid var(--gb)}
+.pick.wide{aspect-ratio:8/3}.pick.sq{width:84px;height:84px;flex:none}.pick.av2{width:110px;height:110px;border-radius:32px;margin:0 auto 12px}
+.pick img{width:100%;height:100%;object-fit:cover;display:block}.ph{height:100%;min-height:70px;display:grid;place-items:center;font-size:28px;color:var(--t2)}
+.pick span{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;font-size:12px;padding:4px 10px;border-radius:999px}
 </style></head>
 <body>
 <div id="app"></div>
@@ -117,13 +121,14 @@ $("#bc").onclick=()=>{const d=$("#bd").value;if(!d){toast("Choose a date");retur
 views.hist=()=>`<h1>Visited</h1><p class="sub">Restaurants you’ve opened with Umber.</p><div style="margin-top:14px">${S.vis.length?S.vis.map(v=>{const r=R.find(x=>x.id===v.id);if(!r)return"";return `<div class="g row" data-o="${r.id}">${av(r)}<div style="flex:1"><b>${esc(r.n)}</b><div class="sub">${new Date(v.t).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}</div></div><span class="sub">View menu</span></div>`}).join(""):`<div class="g sub" style="padding:22px;text-align:center">Nothing yet. Scan a QR to open your first menu.</div>`}</div>`;
 bind.hist=bindOpen;
 
-views.me=()=>`<h1>Account</h1><div class="g" style="padding:18px;margin:14px 0 20px"><div style="display:flex;gap:14px;align-items:center;margin-bottom:12px">${S.user.photo?`<img class="av" src="${S.user.photo}" style="width:56px;height:56px;border-radius:18px;object-fit:cover">`:`<div class="av" style="width:56px;height:56px;border-radius:18px">${esc(S.user.name[0]||"?")}</div>`}<div><b>${esc(S.user.name)}</b><div class="sub">${esc(S.user.email)}</div></div></div><input id="pf" type="file" accept="image/*"><input id="pn" value="${esc(S.user.name)}" placeholder="Your name"><button class="btn" id="ps">Save profile</button></div>
+views.me=()=>`<h1>Account</h1><div class="g" style="padding:18px;margin:14px 0 20px"><div style="display:flex;gap:14px;align-items:center;margin-bottom:12px">${S.user.photo?`<img class="av" src="${S.user.photo}" style="width:56px;height:56px;border-radius:18px;object-fit:cover">`:`<div class="av" style="width:56px;height:56px;border-radius:18px">${esc(S.user.name[0]||"?")}</div>`}<div><b>${esc(S.user.name)}</b><div class="sub">${esc(S.user.email)}</div></div></div><button class="btn" id="pe">Edit profile</button></div>
 <h2>Appearance</h2><div class="chips">${["auto","light","dark"].map(t=>`<button class="chip ${S.th===t?"on":""}" data-th="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}</div>
 <h2>Distance</h2><div class="chips"><button class="chip ${S.mi?"":"on"}" data-u="km">Kilometres</button><button class="chip ${S.mi?"on":""}" data-u="mi">Miles</button></div>
 <h2>Payments</h2><div class="g sub" style="padding:14px;margin:6px 0 20px">No payment methods needed right now.</div>
 <button class="btn s" id="so">Sign out</button>`;
-function profileBind(){let ph;$("#pf").onchange=async e=>{try{ph=await pic(e.target.files[0],192,192);toast("Photo ready, tap Save")}catch(x){toast("That image didn’t load")}};
-$("#ps").onclick=()=>{const d={name:$("#pn").value.trim()||S.user.name};if(ph)d.photo=ph;Object.assign(S.user,d);render();if(window.FS)FS.setDoc(FS.doc(FS.db,"customers",S.user.uid),d,{merge:true}).then(()=>toast("Profile saved")).catch(()=>toast("Couldn’t save your profile"))}}
+function profileBind(){$("#pe").onclick=()=>{let ph;const o=document.createElement("div");o.className="ov";o.innerHTML=`<div class="sh"><h2>Edit profile</h2><label class="pick av2">${S.user.photo?`<img src="${S.user.photo}">`:`<div class="ph">+</div>`}<span>Change</span><input id="pf" type="file" accept="image/*" hidden></label><label class="sub">Name</label><input id="pn" value="${esc(S.user.name)}"><button class="btn" id="ps">Save</button></div>`;document.body.appendChild(o);o.onclick=e=>{if(e.target===o)o.remove()};
+$("#pf").onchange=async e=>{try{ph=await pic(e.target.files[0],192,192);$("#pf").parentNode.querySelector("img,.ph").outerHTML=`<img src="${ph}">`}catch(x){toast("That image didn’t load")}};
+$("#ps").onclick=()=>{const d={name:$("#pn").value.trim()||S.user.name};if(ph)d.photo=ph;Object.assign(S.user,d);o.remove();render();if(window.FS)FS.setDoc(FS.doc(FS.db,"customers",S.user.uid),d,{merge:true}).then(()=>toast("Profile saved")).catch(()=>toast("Couldn’t save your profile"))}}}
 bind.me=()=>{profileBind();document.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{S.th=b.dataset.th;save();render()});
 document.querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>{S.mi=b.dataset.u==="mi";save();render()});
 $("#so").onclick=()=>FB.out()};
