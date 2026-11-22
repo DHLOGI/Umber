@@ -41,7 +41,7 @@ import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-ap
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 // 1) Paste your Firebase web app config here (Firebase console > Project settings > Your apps)
 const cfg={apiKey:"AIzaSyAnVP6uzJFpVijpPRTVIAfJMsaXIN1kds4",authDomain:"umber-8b64b.firebaseapp.com",projectId:"umber-8b64b",appId:"1:688241909538:web:a9bcd233fe32e3855bcf7b"};
-const ready=cfg.apiKey!=="AIzaSyAnVP6uzJFpVijpPRTVIAfJMsaXIN1kds4",say=u=>dispatchEvent(new CustomEvent("umber-user",{detail:u}));
+const ready=cfg.apiKey!=="YOUR_API_KEY",say=u=>dispatchEvent(new CustomEvent("umber-user",{detail:u}));
 window.FB={ready,in:()=>{},out:()=>{}};
 if(ready){const auth=getAuth(initializeApp(cfg));
 FB.in=()=>signInWithPopup(auth,new GoogleAuthProvider());FB.out=()=>signOut(auth);
