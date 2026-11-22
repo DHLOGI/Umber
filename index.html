@@ -37,18 +37,24 @@ input,select{width:100%;padding:13px 14px;border-radius:14px;border:1px solid va
 .pick.wide{aspect-ratio:8/3}.pick.sq{width:84px;height:84px;flex:none}.pick.av2{width:110px;height:110px;border-radius:32px;margin:0 auto 12px}
 .pick img{width:100%;height:100%;object-fit:cover;display:block}.ph{height:100%;min-height:70px;display:grid;place-items:center;font-size:28px;color:var(--t2)}
 .pick span{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;font-size:12px;padding:4px 10px;border-radius:999px}
+.map{position:relative;aspect-ratio:1;border-radius:24px;background:var(--glass);border:1px solid var(--gb);overflow:hidden;touch-action:none}.map.rect{aspect-ratio:4/3}
+.tb{position:absolute;transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;border:1px solid var(--gb);background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--tx);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;font-size:13px;touch-action:none;cursor:grab}
+.tb small{color:var(--t2);font-size:11px}.tb.off{opacity:.4}
+.sh{max-height:90vh;overflow:auto}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:10px 0}.cal small{text-align:center;color:var(--t2)}
+.day{aspect-ratio:1;border-radius:14px;border:1px solid var(--gb);background:var(--glass);color:var(--t2);font-family:inherit;font-size:15px;opacity:.45}.day.ok{background:var(--ac);color:var(--on);opacity:1;border-color:transparent}
 </style></head>
 <body>
 <div id="app"></div>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,doc,getDoc,setDoc,collection,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{getFirestore,doc,getDoc,setDoc,writeBatch,serverTimestamp,collection,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 // Paste the config of your Umber Hub Firebase project here (the same values used in hub/index.html)
 const cfg={apiKey:"AIzaSyD-8_kY3IAwlWgSXgR89l3akQDy8er0WJw",authDomain:"umber-47456.firebaseapp.com",projectId:"umber-47456",appId:"1:13912697509:web:7ef673be8382aacf0fbb4c"};
 const ready=!cfg.apiKey.startsWith("YOUR"),say=u=>dispatchEvent(new CustomEvent("umber-user",{detail:u}));
 window.FB={ready,in:()=>{},out:()=>{}};
-if(ready){const app=initializeApp(cfg),auth=getAuth(app);window.FS={db:getFirestore(app),doc,getDoc,setDoc,collection,onSnapshot};
+if(ready){const app=initializeApp(cfg),auth=getAuth(app);window.FS={db:getFirestore(app),doc,getDoc,setDoc,writeBatch,serverTimestamp,collection,onSnapshot};
 FB.in=()=>signInWithPopup(auth,new GoogleAuthProvider());FB.out=()=>signOut(auth);
 onAuthStateChanged(auth,u=>say(u?{uid:u.uid,name:u.displayName||"Guest",email:u.email||"",photo:u.photoURL||""}:null))}else say(null);
 </script>
@@ -64,7 +70,7 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const av=r=>r.logo?`<img class="av" src="${r.logo}" style="object-fit:cover">`:`<div class="av">${esc(ini(r))}</div>`;
 const pic=(f,w,h)=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const c=document.createElement("canvas"),k=Math.max(w/i.width,h/i.height),sw=w/k,sh=h/k;c.width=w;c.height=h;c.getContext("2d").drawImage(i,(i.width-sw)/2,(i.height-sh)/2,sw,sh,0,0,w,h);ok(c.toDataURL("image/jpeg",.78))};i.onerror=no;i.src=URL.createObjectURL(f)});
 function calc(){if(pos)R.forEach(x=>{x.km=x.lat!=null?+hav(pos,x).toFixed(1):null})}
-function startR(){if(!window.FS||startR.on)return;startR.on=1;FS.onSnapshot(FS.collection(FS.db,"restaurants"),q=>{R=q.docs.map(d=>{const x=d.data();return{id:d.id,n:x.name,c:x.tagline,a:x.address,lat:x.lat,lng:x.lng,logo:x.logo,banner:x.banner}});calc();if(!startR.h){startR.h=1;hashOpen()}if(S.user&&!cam)render()},()=>toast("Couldn’t load stores"))}
+function startR(){if(!window.FS||startR.on)return;startR.on=1;FS.onSnapshot(FS.collection(FS.db,"restaurants"),q=>{R=q.docs.map(d=>{const x=d.data();return{id:d.id,n:x.name,c:x.tagline,a:x.address,lat:x.lat,lng:x.lng,logo:x.logo,banner:x.banner}});calc();R.forEach(x=>wb(x.id));if(!startR.h){startR.h=1;hashOpen()}if(S.user&&!cam)render()},()=>toast("Couldn’t load stores"))}
 function watch(id){if(WP[id]||!window.FS)return;WP[id]=1;FS.onSnapshot(FS.collection(FS.db,"restaurants",id,"products"),q=>{MP[id]=q.docs.map(d=>({id:d.id,...d.data()}));if(cur===id)render()},()=>{})}
 const hh=h=>String(h).padStart(2,"0")+":00";
 const isOpen=r=>{const h=new Date().getHours();return h>=r.h[0]&&h<r.h[1]};
@@ -93,7 +99,7 @@ bind.scan=()=>{const sm=m=>$("#sm").textContent=m;bindOpen();
 $("#cam").onclick=async()=>{if(cam){render();return}
 if(!navigator.mediaDevices||!window.jsQR){sm("This browser can’t scan inside the page. Scan with your phone’s camera app or type the code below.");return}
 try{cam=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});const v=$("#v");v.srcObject=cam;v.style.display="block";$("#vh").style.display="none";await v.play();$("#cam").textContent="Stop camera";const cv=document.createElement("canvas"),cx=cv.getContext("2d",{willReadFrequently:true});
-tmr=setInterval(()=>{if(v.readyState<2)return;cv.width=v.videoWidth;cv.height=v.videoHeight;cx.drawImage(v,0,0);const q=jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height);if(q){const r=find(q.data);r?openMenu(r.id):sm("That QR isn’t a Umber menu.")}},250)}catch(e){stopCam();sm("Camera access was blocked. Allow it in your browser or type the code below.")}};
+tmr=setInterval(()=>{if(v.readyState<2)return;cv.width=v.videoWidth;cv.height=v.videoHeight;cx.drawImage(v,0,0);const q=jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height);if(q){const w=(q.data.split("#w:")[1]||"").split(":");if(w[1]){render();crew(w[0],w[1]);return}const r=find(q.data);r?openMenu(r.id):sm("That QR isn’t a Umber menu.")}},250)}catch(e){stopCam();sm("Camera access was blocked. Allow it in your browser or type the code below.")}};
 $("#gc").onclick=()=>{const r=find($("#code").value);r?openMenu(r.id):sm("No restaurant matches that code.")}};
 
 function menu(id){const r=R.find(x=>x.id===id);if(!r){cur=null;return login()}const L=(MP[id]||[]).filter(p=>p.available!==false).sort((a,b)=>String(a.name).localeCompare(b.name));
@@ -102,21 +108,46 @@ function bindMenu(){$("#back").onclick=()=>{cur=null;cat=null;render()};
 document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{cat=b.dataset.c;render()});
 $("#bkt").onclick=()=>sheet(cur)}
 
-views.book=()=>{const up=S.bk.slice().sort((a,b)=>a.d+a.tm<b.d+b.tm?-1:1),L=R.filter(r=>!pos||fl==="all"||(fl==="near"?r.km<10:r.km>=10)).sort((a,b)=>pos?(a.km??1e9)-(b.km??1e9):0);
-return `<h1>Book a table</h1><p class="sub">Reserve at registered restaurants, near or far. In this preview, bookings stay on this device.</p>
+views.book=()=>{const up=mine(),L=R.filter(r=>!pos||fl==="all"||(fl==="near"?r.km<10:r.km>=10)).sort((a,b)=>pos?(a.km??1e9)-(b.km??1e9):0);
+return `<h1>Book a table</h1><p class="sub">Reserve at registered restaurants, near or far. You can hold up to 2 reservations per store.</p>
 ${up.length?`<h2 style="margin-top:18px">Your bookings</h2>${up.map(b=>{const r=R.find(x=>x.id===b.id);if(!r)return"";return `<div class="g row" style="cursor:default">${av(r)}<div style="flex:1"><b>${esc(r.n)}</b><div class="sub">${b.d} at ${b.tm}</div><div class="sub">${b.g} guest${b.g>1?"s":""}</div></div><button class="chip" data-x="${b.k}">Cancel</button></div>`}).join("")}`:""}
 <h2 style="margin-top:18px">Restaurants</h2>${pos?`<div class="chips">${[["all","All"],["near","Near, under 10 km"],["far","Far"]].map(f=>`<button class="chip ${fl===f[0]?"on":""}" data-f="${f[0]}">${f[1]}</button>`).join("")}</div>`:`<div class="g" style="padding:16px;margin:6px 0 14px"><p class="sub" style="margin:0 0 12px">Share your location to sort restaurants by distance. Demo restaurants are placed around you.</p><button class="btn" id="loc">Use my location</button></div>`}
 ${L.map(r=>`<div class="g row" data-o="${r.id}">${av(r)}<div style="flex:1"><b>${esc(r.n)}</b><div class="sub">${esc(r.c||"")}</div><div class="sub">${pos&&r.km!=null?dist(r.km):esc(r.a||"")}</div></div><button class="chip on" data-b="${r.id}">Book</button></div>`).join("")}`};
 bind.book=()=>{bindOpen();const l=$("#loc");if(l)l.onclick=()=>locate(render);
 document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{fl=b.dataset.f;render()});
-document.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{S.bk=S.bk.filter(k=>k.k!=b.dataset.x);save();render();toast("Booking cancelled")});
+document.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{const[rid,id]=b.dataset.x.split("|"),w=FS.writeBatch(FS.db);["busy","bookings"].forEach(c=>w.delete(FS.doc(FS.db,"restaurants",rid,c,id)));w.commit().then(()=>toast("Booking cancelled")).catch(()=>toast("Couldn’t cancel"))});
 document.querySelectorAll("[data-b]").forEach(b=>b.onclick=e=>{e.stopPropagation();sheet(b.dataset.b)})};
 
-function sheet(id){const r=R.find(x=>x.id===id),t=new Date().toISOString().slice(0,10),ts=[];for(let h=9;h<22;h++)ts.push(hh(h),hh(h).replace(":00",":30"));
-const o=document.createElement("div");o.className="ov";
-o.innerHTML=`<div class="sh"><h2>Book at ${esc(r.n)}</h2><p class="sub" style="margin:0 0 12px">Choose a date, time and party size.</p><label class="sub">Date</label><input type="date" id="bd" min="${t}" value="${t}"><label class="sub">Time</label><select id="bt">${ts.map(x=>`<option>${x}</option>`).join("")}</select><label class="sub">Guests</label><select id="bg">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join("")}</select><button class="btn" id="bc" style="margin-top:8px">Confirm booking</button><button class="btn s" id="bx" style="margin-top:8px">Close</button></div>`;
-document.body.appendChild(o);o.onclick=e=>{if(e.target===o)o.remove()};$("#bx").onclick=()=>o.remove();
-$("#bc").onclick=()=>{const d=$("#bd").value;if(!d){toast("Choose a date");return}S.bk.push({k:Date.now(),id,d,tm:$("#bt").value,g:+$("#bg").value});save();o.remove();toast("Booked at "+r.n);if(!cur)render()}}
+let rz=null;const WB={},WF={},BZ={},RZ={};
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"),wk=d=>new Date(d+"T12:00:00").getDay();
+const upc=rid=>(BZ[rid]||[]).filter(x=>S.user&&x.uid===S.user.uid&&x.date>=iso(new Date())),mineN=rid=>upc(rid).length;
+const mine=()=>Object.keys(BZ).flatMap(rid=>upc(rid).map(x=>({id:rid,d:x.date,tm:x.start+":00 to "+x.end+":00 ("+(x.tn||"table")+")",g:x.g,k:rid+"|"+x._id}))).sort((a,b)=>a.d<b.d?-1:1);
+function wb(id){if(WB[id]||!window.FS)return;WB[id]=1;FS.onSnapshot(FS.collection(FS.db,"restaurants",id,"busy"),q=>{BZ[id]=q.docs.map(d=>({_id:d.id,...d.data()}));if(rz&&rz.id===id)draw();else if(!rz&&!cur&&!cam&&S.user&&tab==="book")render()},()=>{})}
+function wf(id){if(WF[id]||!window.FS)return;WF[id]=1;RZ[id]={fl:[],tb:[]};["floors","tables"].forEach(c=>FS.onSnapshot(FS.collection(FS.db,"restaurants",id,c),q=>{RZ[id][c==="floors"?"fl":"tb"]=q.docs.map(d=>({id:d.id,...d.data()}));if(rz&&rz.id===id)draw()},()=>{}))}
+function free(t,date,bz){if(!t.bookable||!(t.days||[0,1,2,3,4,5,6]).includes(wk(date)))return[];let w=[[t.from==null?9:t.from,t.to==null?22:t.to]];const g=t.gap==null?1:t.gap;
+bz.filter(x=>x.tid===t.id&&x.date===date).forEach(x=>{const a=x.start-g,b=x.end+g;w=w.flatMap(([s,e])=>[[s,Math.min(e,a)],[Math.max(s,b),e]]).filter(([s,e])=>e-s>=1)});
+if(date===iso(new Date())){const h=new Date().getHours()+1;w=w.map(([s,e])=>[Math.max(s,h),e]).filter(([s,e])=>e-s>=1)}return w}
+const fits=t=>t.seats>=rz.g&&(!rz.kids||t.kids),dayOk=(d,X,bz)=>X.tb.some(t=>fits(t)&&free(t,d,bz).length);
+function sheet(id){rz={id,date:"",mo:new Date(),fl:"",g:2,kids:false};wf(id);wb(id);const o=document.createElement("div");o.className="ov";o.id="rz";o.onclick=e=>{if(e.target===o){rz=null;o.remove()}};document.body.appendChild(o);draw()}
+function draw(){const o=$("#rz");if(!o||!rz)return;const r=R.find(x=>x.id===rz.id);if(!r){o.remove();rz=null;return}const X=RZ[rz.id]||{fl:[],tb:[]},bz=BZ[rz.id]||[];o.innerHTML=`<div class="sh" style="min-height:60vh">${rz.date?mapV(X,bz):calV(r,X,bz)}</div>`;bindRz(X,bz)}
+function calV(r,X,bz){const m=rz.mo,y=m.getFullYear(),mo=m.getMonth(),first=new Date(y,mo,1).getDay(),n=new Date(y,mo+1,0).getDate(),t0=iso(new Date()),mx=iso(new Date(Date.now()+90*864e5));let c="";for(let i=0;i<first;i++)c+="<i></i>";
+for(let d=1;d<=n;d++){const ds=y+"-"+String(mo+1).padStart(2,"0")+"-"+String(d).padStart(2,"0"),ok=ds>=t0&&ds<=mx&&dayOk(ds,X,bz);c+=`<button class="day ${ok?"ok":""}" ${ok?`data-d="${ds}"`:"disabled"}>${d}</button>`}
+return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h2 style="margin:0">Book at ${esc(r.n)}</h2><button class="chip" data-z="x">Close</button></div>${mineN(r.id)>=2?`<p class="sub">You already have 2 upcoming reservations here. Cancel one to book again.</p>`:""}<div style="display:flex;justify-content:space-between;align-items:center"><b>${m.toLocaleDateString(undefined,{month:"long",year:"numeric"})}</b><span><button class="chip" data-z="p">Prev</button> <button class="chip" data-z="n">Next</button></span></div><div class="cal">${"SMTWTFS".split("").map(x=>`<small>${x}</small>`).join("")}${c}</div><div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0"><span>Guests</span><span><button class="chip" data-z="g-">−</button> <b>${rz.g}</b> <button class="chip" data-z="g+">+</button></span></div><label style="display:flex;justify-content:space-between;align-items:center;margin:10px 0"><span>Children coming</span><input type="checkbox" id="kd" ${rz.kids?"checked":""} style="width:auto;margin:0"></label><p class="sub" style="font-size:13px">Highlighted days have free tables for your group.</p>`}
+function mapV(X,bz){const fls=X.fl.slice().sort((a,b)=>(a.order||0)-(b.order||0));if(!fls.find(f=>f.id===rz.fl))rz.fl=fls[0]?fls[0].id:"";const f=fls.find(x=>x.id===rz.fl)||{};
+return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><button class="chip" data-z="b">Back</button><b>${rz.date}</b><button class="chip" data-z="x">Close</button></div>${fls.length>1?`<div class="chips">${fls.map(x=>`<button class="chip ${x.id===rz.fl?"on":""}" data-f="${x.id}">${esc(x.name)}</button>`).join("")}</div>`:""}<div class="map ${f.shape==="rect"?"rect":""}">${X.tb.filter(t=>t.floor===rz.fl).map(t=>{const ok=fits(t)&&free(t,rz.date,bz).length>0;return `<button class="tb ${ok?"":"off"}" data-t="${t.id}" style="left:${t.x==null?50:t.x}%;top:${t.y==null?50:t.y}%"><b>${esc(t.name)}</b><small>${t.seats} seats</small></button>`}).join("")}</div><p class="sub" style="font-size:13px">Tap a table to see its details.</p>`}
+function bindRz(X,bz){const o=$("#rz");o.querySelectorAll("[data-z]").forEach(b=>b.onclick=()=>{const z=b.dataset.z,m=rz.mo;if(z==="x"){rz=null;o.remove();return}if(z==="b")rz.date="";if(z==="p")rz.mo=new Date(m.getFullYear(),m.getMonth()-1,1);if(z==="n")rz.mo=new Date(m.getFullYear(),m.getMonth()+1,1);if(z==="g+")rz.g=Math.min(12,rz.g+1);if(z==="g-")rz.g=Math.max(1,rz.g-1);draw()});
+o.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{if(mineN(rz.id)>=2){toast("You already have 2 reservations here");return}rz.date=b.dataset.d;draw()});
+o.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{rz.fl=b.dataset.f;draw()});
+o.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>tableSheet(X.tb.find(t=>t.id===b.dataset.t),bz));
+const k=$("#kd");if(k)k.onchange=()=>{rz.kids=k.checked;draw()}}
+function tableSheet(t,bz){const w=free(t,rz.date,bz),o=document.createElement("div");o.className="ov";o.style.zIndex=30;const opts=(a,b)=>{let h="";for(let i=a;i<=b;i++)h+=`<option>${i}</option>`;return h};
+o.innerHTML=`<div class="sh"><h2>${esc(t.name)}</h2><p class="sub">${t.seats} seats${t.kids?", children welcome":""}</p>${!fits(t)?`<p class="sub">This table doesn’t fit ${rz.g} guest${rz.g>1?"s":""}${rz.kids&&!t.kids?" with children":""}.</p>`:w.length?`<p class="sub">Free: ${w.map(([a,b])=>a+":00 to "+b+":00").join(", ")}</p><label class="sub">Free window</label><select id="wz">${w.map((x,i)=>`<option value="${i}">${x[0]}:00 to ${x[1]}:00</option>`).join("")}</select><label class="sub">From (hour)</label><select id="fa"></select><label class="sub">Until (hour)</label><select id="fe"></select><button class="btn" id="rb">Reserve</button>`:`<p class="sub">No free time on this day.</p>`}</div>`;
+document.body.appendChild(o);o.onclick=e=>{if(e.target===o)o.remove()};
+if($("#rb")){const fill=()=>{const a=+$("#fa").value,b=w[+$("#wz").value][1];$("#fe").innerHTML=opts(a+1,Math.min(b,a+3))},sel=()=>{const x=w[+$("#wz").value];$("#fa").innerHTML=opts(x[0],x[1]-1);fill()};$("#wz").onchange=sel;$("#fa").onchange=fill;sel();$("#rb").onclick=()=>book(t,+$("#fa").value,+$("#fe").value,o)}}
+function book(t,a,b,o){const rid=rz.id,u=S.user.uid,up=upc(rid),id=[1,2].map(n=>u+"_"+n).find(i=>!up.find(x=>x._id===i));if(!id){toast("You already have 2 reservations here");return}
+const w=FS.writeBatch(FS.db),B=["restaurants",rid],d={uid:u,tid:t.id,tn:t.name,date:rz.date,start:a,end:b,g:rz.g};
+w.set(FS.doc(FS.db,...B,"busy",id),d);w.set(FS.doc(FS.db,...B,"bookings",id),{...d,kids:rz.kids,name:S.user.name,t:FS.serverTimestamp()});
+w.commit().then(()=>{o.remove();const z=$("#rz");if(z)z.remove();rz=null;toast("Reserved "+t.name);render()}).catch(()=>toast("Couldn’t reserve. Try another time."))}
 
 views.hist=()=>`<h1>Visited</h1><p class="sub">Restaurants you’ve opened with Umber.</p><div style="margin-top:14px">${S.vis.length?S.vis.map(v=>{const r=R.find(x=>x.id===v.id);if(!r)return"";return `<div class="g row" data-o="${r.id}">${av(r)}<div style="flex:1"><b>${esc(r.n)}</b><div class="sub">${new Date(v.t).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}</div></div><span class="sub">View menu</span></div>`}).join(""):`<div class="g sub" style="padding:22px;text-align:center">Nothing yet. Scan a QR to open your first menu.</div>`}</div>`;
 bind.hist=bindOpen;
@@ -140,7 +171,11 @@ if(cur){a.innerHTML=menu(cur);bindMenu();return}
 a.innerHTML=`<main>${views[tab]()}</main><nav><div class="g">${[["scan","Scan"],["book","Book"],["hist","Visited"],["me","Account"]].map(([k,l])=>`<button data-t="${k}" class="${tab===k?"on":""}">${ic(k)}${l}</button>`).join("")}</div></nav>`;
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render();scrollTo(0,0)});
 bind[tab]()}
-function hashOpen(){const r=find(location.hash);if(r){S.user?openMenu(r.id):pend=r.id}}
+function crew(rid,sid){const k=rid+sid;if(!window.FS||crew.k===k)return;crew.k=k;setTimeout(()=>crew.k="",4000);
+FS.getDoc(FS.doc(FS.db,"restaurants",rid,"crew",sid)).then(d=>{if(!d.exists()){toast("That team member isn’t available");return}const c=d.data(),st=R.find(x=>x.id===rid),L={owner:"Owner",manager:"Manager",developer:"Team",admin:"Server"},o=document.createElement("div");o.className="ov";o.style.zIndex=30;
+o.innerHTML=`<div class="sh" style="text-align:center">${c.photo?`<img src="${c.photo}" style="width:110px;height:110px;border-radius:32px;object-fit:cover">`:`<div class="av" style="width:110px;height:110px;border-radius:32px;margin:0 auto;font-size:36px">${esc((c.name||"?")[0]).toUpperCase()}</div>`}<h2 style="margin:12px 0 0">${esc(c.name)}</h2><div class="sub">${L[c.role]||"Team"}${st?" at "+esc(st.n):""}</div><button class="btn s" id="cx" style="margin-top:16px">Close</button></div>`;
+document.body.appendChild(o);o.onclick=e=>{if(e.target===o)o.remove()};$("#cx").onclick=()=>o.remove()}).catch(()=>toast("Couldn’t load that profile"))}
+function hashOpen(){const w=location.hash.match(/^#w:([^:]+):(.+)$/);if(w){if(S.user)crew(w[1],w[2]);return}const r=find(location.hash);if(r){S.user?openMenu(r.id):pend=r.id}}
 addEventListener("hashchange",hashOpen);
 addEventListener("umber-user",e=>{const u=e.detail;ar=true;if(u){let d={};try{d=JSON.parse(localStorage.getItem(K+u.uid)||"{}")}catch(x){}S={vis:[],bk:[],mi:false,th:"auto",...d,user:u}}else{S.user=null;cur=null}startR();render();hashOpen();if(u&&window.FS)FS.getDoc(FS.doc(FS.db,"customers",u.uid)).then(c=>{if(c.exists()){Object.assign(S.user,c.data());render()}}).catch(()=>{})});
 setTimeout(()=>{if(!ar){ar=true;render()}},6000);
