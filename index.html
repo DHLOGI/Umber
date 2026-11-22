@@ -146,7 +146,7 @@ document.body.appendChild(o);o.onclick=e=>{if(e.target===o)o.remove()};
 if($("#rb")){const fill=()=>{const a=+$("#fa").value,b=w[+$("#wz").value][1];$("#fe").innerHTML=opts(a+1,Math.min(b,a+3))},sel=()=>{const x=w[+$("#wz").value];$("#fa").innerHTML=opts(x[0],x[1]-1);fill()};$("#wz").onchange=sel;$("#fa").onchange=fill;sel();$("#rb").onclick=()=>book(t,+$("#fa").value,+$("#fe").value,o)}}
 function book(t,a,b,o){const rid=rz.id,u=S.user.uid,up=upc(rid),id=[1,2].map(n=>u+"_"+n).find(i=>!up.find(x=>x._id===i));if(!id){toast("You already have 2 reservations here");return}
 const w=FS.writeBatch(FS.db),B=["restaurants",rid],d={uid:u,tid:t.id,tn:t.name,date:rz.date,start:a,end:b,g:rz.g};
-w.set(FS.doc(FS.db,...B,"busy",id),d);w.set(FS.doc(FS.db,...B,"bookings",id),{...d,kids:rz.kids,name:S.user.name,t:FS.serverTimestamp()});
+w.set(FS.doc(FS.db,...B,"busy",id),d);w.set(FS.doc(FS.db,...B,"bookings",id),{...d,kids:rz.kids,name:S.user.name,photo:S.user.photo||"",t:FS.serverTimestamp()});
 w.commit().then(()=>{o.remove();const z=$("#rz");if(z)z.remove();rz=null;toast("Reserved "+t.name);render()}).catch(()=>toast("Couldn’t reserve. Try another time."))}
 
 views.hist=()=>`<h1>Visited</h1><p class="sub">Restaurants you’ve opened with Umber.</p><div style="margin-top:14px">${S.vis.length?S.vis.map(v=>{const r=R.find(x=>x.id===v.id);if(!r)return"";return `<div class="g row" data-o="${r.id}">${av(r)}<div style="flex:1"><b>${esc(r.n)}</b><div class="sub">${new Date(v.t).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}</div></div><span class="sub">View menu</span></div>`}).join(""):`<div class="g sub" style="padding:22px;text-align:center">Nothing yet. Scan a QR to open your first menu.</div>`}</div>`;
