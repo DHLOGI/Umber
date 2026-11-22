@@ -39,16 +39,16 @@ input,select{width:100%;padding:13px 14px;border-radius:14px;border:1px solid va
 <div id="app"><main class="c sub">Loading…</main></div>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithEmailAndPassword,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import{getFirestore,doc,getDoc,setDoc,updateDoc,addDoc,collection,query,where,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const cfg={apiKey:"AIzaSyAnVP6uzJFpVijpPRTVIAfJMsaXIN1kds4",authDomain:"umber-8b64b.firebaseapp.com",projectId:"umber-8b64b",appId:"1:688241909538:web:a9bcd233fe32e3855bcf7b"};
-// Your own Google email: it unlocks the Platform tab where you register stores. Must match firestore.rules.
-const PLAT="YOUR_EMAIL@gmail.com";
+// Platform admin: this email, signed in with email and password (not Google), unlocks the Platform tab. Must match firestore.rules.
+const PLAT="matshulker.original@gmail.com";
 const auth=getAuth(initializeApp(cfg)),db=getFirestore();
 const $=s=>document.querySelector(s),V={},B={},roles=["owner","manager","developer","admin"],nextS={new:"preparing",preparing:"ready",ready:"served"},lbl={new:"Start",preparing:"Mark ready",ready:"Mark served"};
 let U=null,M=null,RS=null,tab="",P=[],O=[],T=[],RL=[],un=[],ar=false,rem=false,tbl="",draft={};
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const money=v=>"$"+Number(v).toFixed(2),isP=()=>U&&U.email===PLAT.toLowerCase(),has=(...r)=>M&&r.includes(M.role);
+const money=v=>"$"+Number(v).toFixed(2),isP=()=>U&&U.pw&&U.email===PLAT.toLowerCase(),has=(...r)=>M&&r.includes(M.role);
 const seats=r=>[T.filter(s=>s.role===r&&s.active!==false).length,((RS&&RS.seats)||{})[r]||0];
 function toast(m){const t=document.createElement("div");t.className="toast g";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2400)}
 const err=e=>toast("Couldn’t complete that: "+(e.code||"error"));
@@ -100,16 +100,17 @@ setDoc(doc(db,"restaurants",id),{name:n,seats:sd,createdBy:U.email},{merge:true}
 
 function redraw(t){if(!U||!$("#v"))return;if(t&&t!==tab&&!(t==="menu"&&tab==="orders"))return;$("#v").innerHTML=V[tab]();B[tab]()}
 function render(){const a=$("#app");
-if(!U){a.innerHTML=`<main class="c"><div class="g box" style="text-align:center;padding:30px 22px"><div class="av big">U</div><h1>Umber Hub</h1><p class="sub">Run your menu, orders and team.</p><button class="btn" id="go" style="margin-top:18px">Continue with Google</button></div></main>`;$("#go").onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast("Sign-in didn’t finish. Try again."));return}
+if(!U){a.innerHTML=`<main class="c"><div class="g box" style="text-align:center;padding:30px 22px"><div class="av big">U</div><h1>Umber Hub</h1><p class="sub">Run your menu, orders and team.</p><button class="btn" id="go" style="margin-top:18px">Continue with Google</button><p class="sub" style="margin:18px 0 6px">Platform admin</p><input id="ae" type="email" placeholder="Email" autocomplete="username"><input id="ap" type="password" placeholder="Password" autocomplete="current-password"><button class="btn s" id="gp">Sign in with password</button></div></main>`;$("#go").onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast("Sign-in didn’t finish. Try again."));
+$("#gp").onclick=()=>signInWithEmailAndPassword(auth,$("#ae").value.trim(),$("#ap").value).catch(()=>toast("Email or password is wrong."));return}
 const t=tabs();
-if(!t.length){a.innerHTML=`<main class="c"><div class="g box"><h2>No store linked</h2><p class="sub">${esc(U.email)} isn’t registered with a store yet. Ask your Umber contact to add it.</p><button class="btn s" id="out">Sign out</button></div></main>`;$("#out").onclick=()=>signOut(auth);return}
+if(!t.length){a.innerHTML=`<main class="c"><div class="g box"><h2>No store linked</h2><p class="sub">${esc(U.email)} isn’t registered with a store yet. Ask your Umber contact to add it.</p>${U.email===PLAT.toLowerCase()?`<p class="sub">Platform admin? Sign out and use your email and password.</p>`:""}<button class="btn s" id="out">Sign out</button></div></main>`;$("#out").onclick=()=>signOut(auth);return}
 if(!t.find(x=>x[0]===tab))tab=t[0][0];
 a.innerHTML=`<main><div class="top"><div><h1 id="hn">${RS?esc(RS.name):"Umber Hub"}</h1><div class="sub">${esc(U.name)}, ${M?M.role:"platform"}</div></div><button class="chip" id="out">Sign out</button></div><div id="v"></div></main><nav><div class="g">${t.map(([k,l])=>`<button data-t="${k}" class="${tab===k?"on":""}">${l}</button>`).join("")}</div></nav>`;
 $("#out").onclick=()=>signOut(auth);
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
 redraw()}
 
-onAuthStateChanged(auth,async u=>{un.forEach(f=>f());un=[];P=[];O=[];T=[];RL=[];M=null;RS=null;U=u?{email:(u.email||"").toLowerCase(),name:u.displayName||"Guest"}:null;
+onAuthStateChanged(auth,async u=>{un.forEach(f=>f());un=[];P=[];O=[];T=[];RL=[];M=null;RS=null;U=u?{email:(u.email||"").toLowerCase(),name:u.displayName||(u.email||"Guest").split("@")[0],pw:u.providerData.some(p=>p.providerId==="password")}:null;
 if(U){try{const s=await getDoc(doc(db,"staff",U.email));if(s.exists()&&s.data().active!==false)M=s.data()}catch(e){err(e)}listen()}
 ar=true;tab="";render()});
 </script></body></html>
