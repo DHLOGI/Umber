@@ -39,42 +39,44 @@ input,select{width:100%;padding:13px 14px;border-radius:14px;border:1px solid va
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-// 1) Paste your Firebase web app config here (Firebase console > Project settings > Your apps)
+import{getFirestore,doc,getDoc,setDoc,collection,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// Paste the config of your Umber Hub Firebase project here (the same values used in hub/index.html)
 const cfg={apiKey:"AIzaSyD-8_kY3IAwlWgSXgR89l3akQDy8er0WJw",authDomain:"umber-47456.firebaseapp.com",projectId:"umber-47456",appId:"1:13912697509:web:7ef673be8382aacf0fbb4c"};
-const ready=cfg.apiKey!=="YOUR_API_KEY",say=u=>dispatchEvent(new CustomEvent("umber-user",{detail:u}));
+const ready=!cfg.apiKey.startsWith("YOUR"),say=u=>dispatchEvent(new CustomEvent("umber-user",{detail:u}));
 window.FB={ready,in:()=>{},out:()=>{}};
-if(ready){const auth=getAuth(initializeApp(cfg));
+if(ready){const app=initializeApp(cfg),auth=getAuth(app);window.FS={db:getFirestore(app),doc,getDoc,setDoc,collection,onSnapshot};
 FB.in=()=>signInWithPopup(auth,new GoogleAuthProvider());FB.out=()=>signOut(auth);
-onAuthStateChanged(auth,u=>say(u?{uid:u.uid,name:u.displayName||"Guest",email:u.email||""}:null))}else say(null);
+onAuthStateChanged(auth,u=>say(u?{uid:u.uid,name:u.displayName||"Guest",email:u.email||"",photo:u.photoURL||""}:null))}else say(null);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
-const R=[
-{id:"aurora-cafe",n:"Aurora Café",c:"Café",a:"Downtown",o:[.4,.45],h:[7,18],m:{"Coffee":[["Espresso",2.5,"Double shot with a rich crema"],["Flat white",3.8,"Silky milk over a ristretto"],["Cold brew",4.2,"Steeped 18 hours, served over ice"]],"Bakery":[["Butter croissant",3.2,"Baked every morning"],["Cardamom bun",3.6,"Soft, sticky and lightly sweet"],["Banana bread",3.4,"Toasted with salted butter"]]}},
-{id:"casa-brasa",n:"Casa Brasa",c:"Grill",a:"Riverside",o:[-1.6,1.8],h:[12,23],m:{"Mains":[["Smash burger",11.5,"Double patty, pickles, house sauce"],["Grilled chicken",13,"Charred lemon and herb rice"],["Veggie skewers",10,"Seasonal vegetables with chimichurri"]],"Drinks":[["Fresh lemonade",3.5,"Mint and a pinch of salt"],["Cola",2.5,"Served cold"],["Sparkling water",2,"500 ml"]]}},
-{id:"nori-house",n:"Nori House",c:"Japanese",a:"Old Town",o:[5.5,-5.6],h:[11,22],m:{"Rolls":[["Salmon avocado roll",9.5,"8 pieces"],["Spicy tuna roll",10,"8 pieces, mild heat"],["Cucumber roll",6,"Vegan, 6 pieces"]],"Bowls":[["Chicken katsu bowl",12,"Crispy cutlet, rice and pickles"],["Miso ramen",13,"Rich broth, soft egg and corn"],["Edamame",4.5,"Sea salt"]]}},
-{id:"the-hearth",n:"The Hearth",c:"Bistro",a:"Lakeside",o:[-30,35],h:[10,21],m:{"Starters":[["Tomato soup",6,"Roasted, with basil oil"],["Burrata toast",9,"Grilled sourdough and olive oil"]],"Mains":[["Wood-fired pizza",14,"Margherita with fresh basil"],["Mushroom pasta",13.5,"Cream, thyme and parmesan"],["Steak frites",19,"Rib-eye with herb butter"]]}}
-];
+let R=[],MP={},WP={};
 const $=s=>document.querySelector(s),K="umber:v1",views={},bind={};
 let S={user:null,vis:[],bk:[],mi:false,th:"auto"},tab="scan",cur=null,cat=null,cam=null,tmr=null,pend=null,fl="all",ar=false,pos=null;
 const save=()=>{if(!S.user)return;try{const{user,...d}=S;localStorage.setItem(K+user.uid,JSON.stringify(d))}catch(e){}};
 const dist=k=>S.mi?(k*0.621).toFixed(1)+" mi":k+" km";
-const money=v=>"$"+v.toFixed(2);
+const money=v=>"$"+Number(v).toFixed(2);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const av=r=>r.logo?`<img class="av" src="${r.logo}" style="object-fit:cover">`:`<div class="av">${esc(ini(r))}</div>`;
+const pic=(f,w,h)=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const c=document.createElement("canvas"),k=Math.max(w/i.width,h/i.height),sw=w/k,sh=h/k;c.width=w;c.height=h;c.getContext("2d").drawImage(i,(i.width-sw)/2,(i.height-sh)/2,sw,sh,0,0,w,h);ok(c.toDataURL("image/jpeg",.78))};i.onerror=no;i.src=URL.createObjectURL(f)});
+function calc(){if(pos)R.forEach(x=>{x.km=x.lat!=null?+hav(pos,x).toFixed(1):null})}
+function startR(){if(!window.FS||startR.on)return;startR.on=1;FS.onSnapshot(FS.collection(FS.db,"restaurants"),q=>{R=q.docs.map(d=>{const x=d.data();return{id:d.id,n:x.name,c:x.tagline,a:x.address,lat:x.lat,lng:x.lng,logo:x.logo,banner:x.banner}});calc();if(!startR.h){startR.h=1;hashOpen()}if(S.user&&!cam)render()},()=>toast("Couldn’t load stores"))}
+function watch(id){if(WP[id]||!window.FS)return;WP[id]=1;FS.onSnapshot(FS.collection(FS.db,"restaurants",id,"products"),q=>{MP[id]=q.docs.map(d=>({id:d.id,...d.data()}));if(cur===id)render()},()=>{})}
 const hh=h=>String(h).padStart(2,"0")+":00";
 const isOpen=r=>{const h=new Date().getHours();return h>=r.h[0]&&h<r.h[1]};
-const ini=r=>r.n.split(" ").map(w=>w[0]).join("").slice(0,2);
+const ini=r=>(r.n||"?").split(" ").map(w=>w[0]).join("").slice(0,2);
 const I={scan:'<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 12h8"/>',book:'<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/>',hist:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',me:'<circle cx="12" cy="9" r="3.5"/><path d="M5 20c1-4 4-5 7-5s6 1 7 5"/>'};
 const ic=k=>`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
-function find(s){s=(s||"").trim().toLowerCase();const k=s.includes("#")?s.split("#").pop():s.split("/").pop();return R.find(r=>r.id===k||r.n.toLowerCase()===s)}
+function find(s){s=(s||"").trim().toLowerCase();const k=s.includes("#")?s.split("#").pop():s.split("/").pop();return R.find(r=>r.id===k||(r.n||"").toLowerCase()===s)}
 function theme(){S.th==="auto"?document.documentElement.removeAttribute("data-theme"):document.documentElement.setAttribute("data-theme",S.th)}
 function stopCam(){clearInterval(tmr);if(cam){cam.getTracks().forEach(t=>t.stop());cam=null}}
 function toast(m){const t=document.createElement("div");t.className="toast g";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
-function openMenu(id){cur=id;cat=null;S.vis=S.vis.filter(v=>v.id!==id);S.vis.unshift({id,t:Date.now()});save();render();scrollTo(0,0)}
+function openMenu(id){watch(id);cur=id;cat=null;S.vis=S.vis.filter(v=>v.id!==id);S.vis.unshift({id,t:Date.now()});save();render();scrollTo(0,0)}
 function bindOpen(){document.querySelectorAll("[data-o]").forEach(e=>e.onclick=()=>openMenu(e.dataset.o))}
 function hav(a,b){const t=x=>x*Math.PI/180,h=Math.sin(t(b.lat-a.lat)/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(t(b.lng-a.lng)/2)**2;return 12742*Math.asin(Math.sqrt(h))}
 // Demo restaurants are placed around the visitor; real ones will just carry their own lat/lng.
 function locate(cb){if(!navigator.geolocation){toast("Location isn’t available in this browser");return}
-navigator.geolocation.getCurrentPosition(g=>{pos={lat:g.coords.latitude,lng:g.coords.longitude};R.forEach(x=>{x.lat=pos.lat+x.o[1]/111;x.lng=pos.lng+x.o[0]/(111*Math.cos(pos.lat*Math.PI/180));x.km=+hav(pos,x).toFixed(1)});cb()},()=>toast("Location is blocked. Allow it in your browser settings."),{timeout:10000})}
+navigator.geolocation.getCurrentPosition(g=>{pos={lat:g.coords.latitude,lng:g.coords.longitude};calc();cb()},()=>toast("Location is blocked. Allow it in your browser settings."),{timeout:10000})}
 
 const login=()=>`<main style="min-height:100vh;display:flex;flex-direction:column;justify-content:center"><div class="g" style="padding:30px 22px;text-align:center"><div class="av" style="width:76px;height:76px;border-radius:24px;margin:0 auto 16px;font-size:32px">U</div><h1>Umber</h1><p class="sub">Scan a QR, read the menu, book a table.</p><button class="btn" id="go" style="margin-top:20px">Continue with Google</button>${window.FB&&FB.ready?"":`<p class="sub" style="font-size:13px;margin-top:14px">Add your Firebase keys to index.html to enable sign-in.</p>`}</div></main>`;
 
@@ -82,7 +84,7 @@ views.scan=()=>`<h1>Hello, ${S.user.name.split(" ")[0]}</h1><p class="sub">Scan 
 <div class="g vf" style="margin:16px 0"><video id="v" playsinline muted style="display:none"></video><span id="vh">Camera is off</span></div>
 <button class="btn" id="cam">Start camera</button><p class="sub" id="sm" style="min-height:22px;margin:10px 2px"></p>
 <h2>Enter a code</h2><div style="display:flex;gap:8px;margin:4px 0 18px"><input id="code" placeholder="For example aurora-cafe" autocapitalize="off" style="margin:0"><button class="btn s" id="gc" style="width:auto">Open</button></div>
-<h2>Try a demo menu</h2><div class="chips">${R.map(r=>`<button class="chip" data-o="${r.id}">${r.n}</button>`).join("")}</div>`;
+<h2>Stores on Umber</h2><div class="chips">${R.map(r=>`<button class="chip" data-o="${r.id}">${esc(r.n)}</button>`).join("")}</div>`;
 bind.scan=()=>{const sm=m=>$("#sm").textContent=m;bindOpen();
 $("#cam").onclick=async()=>{if(cam){render();return}
 if(!navigator.mediaDevices||!window.jsQR){sm("This browser can’t scan inside the page. Scan with your phone’s camera app or type the code below.");return}
@@ -90,40 +92,39 @@ try{cam=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environmen
 tmr=setInterval(()=>{if(v.readyState<2)return;cv.width=v.videoWidth;cv.height=v.videoHeight;cx.drawImage(v,0,0);const q=jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height);if(q){const r=find(q.data);r?openMenu(r.id):sm("That QR isn’t a Umber menu.")}},250)}catch(e){stopCam();sm("Camera access was blocked. Allow it in your browser or type the code below.")}};
 $("#gc").onclick=()=>{const r=find($("#code").value);r?openMenu(r.id):sm("No restaurant matches that code.")}};
 
-function menu(id){const r=R.find(x=>x.id===id),cs=Object.keys(r.m);cat=cat||cs[0];const o=isOpen(r);
-return `<main><button class="chip" id="back">Back</button><div class="g" style="padding:18px;margin:14px 0"><div style="display:flex;gap:12px;align-items:center"><div class="av">${ini(r)}</div><div><h2 style="margin:0">${r.n}</h2><div class="sub">${r.c}, ${r.a}</div>${pos?`<div class="sub">${dist(r.km)} away</div>`:""}</div></div><div style="margin-top:12px;display:flex;gap:10px;align-items:center"><span class="chip ${o?"on":""}">${o?"Open now":"Closed now"}</span><span class="sub">${hh(r.h[0])} to ${hh(r.h[1])}</span></div></div>
-<div class="chips">${cs.map(c=>`<button class="chip ${c===cat?"on":""}" data-c="${c}">${c}</button>`).join("")}</div>
-${r.m[cat].map(i=>`<div class="g row" style="cursor:default"><div style="flex:1"><b>${i[0]}</b><div class="sub" style="font-size:14px">${i[2]}</div></div><b>${money(i[1])}</b></div>`).join("")}
-<button class="btn" id="bkt" style="margin-top:8px">Book a table</button></main>`}
+function menu(id){const r=R.find(x=>x.id===id);if(!r){cur=null;return login()}const L=(MP[id]||[]).filter(p=>p.available!==false).sort((a,b)=>String(a.name).localeCompare(b.name));
+return `<main><button class="chip" id="back">Back</button><div class="g" style="overflow:hidden;margin:14px 0">${r.banner?`<img src="${r.banner}" style="width:100%;display:block">`:""}<div style="padding:18px;display:flex;gap:12px;align-items:center">${av(r)}<div><h2 style="margin:0">${esc(r.n)}</h2><div class="sub">${esc(r.c||"")}</div><div class="sub">${esc(r.a||"")}</div>${pos&&r.km!=null?`<div class="sub">${dist(r.km)} away</div>`:""}</div></div></div>${L.length?L.map(i=>`<div class="g row" style="cursor:default"><div style="flex:1"><b>${esc(i.name)}</b>${i.note?`<div class="sub" style="font-size:14px">${esc(i.note)}</div>`:""}</div><b>${money(i.price)}</b></div>`).join(""):`<div class="g sub" style="padding:18px;text-align:center">This menu is empty for now.</div>`}<button class="btn" id="bkt" style="margin-top:8px">Book a table</button></main>`}
 function bindMenu(){$("#back").onclick=()=>{cur=null;cat=null;render()};
 document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{cat=b.dataset.c;render()});
 $("#bkt").onclick=()=>sheet(cur)}
 
-views.book=()=>{const up=S.bk.slice().sort((a,b)=>a.d+a.tm<b.d+b.tm?-1:1),L=R.filter(r=>!pos||fl==="all"||(fl==="near"?r.km<10:r.km>=10)).sort((a,b)=>pos?a.km-b.km:0);
+views.book=()=>{const up=S.bk.slice().sort((a,b)=>a.d+a.tm<b.d+b.tm?-1:1),L=R.filter(r=>!pos||fl==="all"||(fl==="near"?r.km<10:r.km>=10)).sort((a,b)=>pos?(a.km??1e9)-(b.km??1e9):0);
 return `<h1>Book a table</h1><p class="sub">Reserve at registered restaurants, near or far. In this preview, bookings stay on this device.</p>
-${up.length?`<h2 style="margin-top:18px">Your bookings</h2>${up.map(b=>{const r=R.find(x=>x.id===b.id);return `<div class="g row" style="cursor:default"><div class="av">${ini(r)}</div><div style="flex:1"><b>${r.n}</b><div class="sub">${b.d} at ${b.tm}</div><div class="sub">${b.g} guest${b.g>1?"s":""}</div></div><button class="chip" data-x="${b.k}">Cancel</button></div>`}).join("")}`:""}
+${up.length?`<h2 style="margin-top:18px">Your bookings</h2>${up.map(b=>{const r=R.find(x=>x.id===b.id);if(!r)return"";return `<div class="g row" style="cursor:default">${av(r)}<div style="flex:1"><b>${esc(r.n)}</b><div class="sub">${b.d} at ${b.tm}</div><div class="sub">${b.g} guest${b.g>1?"s":""}</div></div><button class="chip" data-x="${b.k}">Cancel</button></div>`}).join("")}`:""}
 <h2 style="margin-top:18px">Restaurants</h2>${pos?`<div class="chips">${[["all","All"],["near","Near, under 10 km"],["far","Far"]].map(f=>`<button class="chip ${fl===f[0]?"on":""}" data-f="${f[0]}">${f[1]}</button>`).join("")}</div>`:`<div class="g" style="padding:16px;margin:6px 0 14px"><p class="sub" style="margin:0 0 12px">Share your location to sort restaurants by distance. Demo restaurants are placed around you.</p><button class="btn" id="loc">Use my location</button></div>`}
-${L.map(r=>`<div class="g row" data-o="${r.id}"><div class="av">${ini(r)}</div><div style="flex:1"><b>${r.n}</b><div class="sub">${r.c}, ${pos?dist(r.km):r.a}</div><div class="sub">${isOpen(r)?"Open now":"Closed now"}</div></div><button class="chip on" data-b="${r.id}">Book</button></div>`).join("")}`};
+${L.map(r=>`<div class="g row" data-o="${r.id}">${av(r)}<div style="flex:1"><b>${esc(r.n)}</b><div class="sub">${esc(r.c||"")}</div><div class="sub">${pos&&r.km!=null?dist(r.km):esc(r.a||"")}</div></div><button class="chip on" data-b="${r.id}">Book</button></div>`).join("")}`};
 bind.book=()=>{bindOpen();const l=$("#loc");if(l)l.onclick=()=>locate(render);
 document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{fl=b.dataset.f;render()});
 document.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{S.bk=S.bk.filter(k=>k.k!=b.dataset.x);save();render();toast("Booking cancelled")});
 document.querySelectorAll("[data-b]").forEach(b=>b.onclick=e=>{e.stopPropagation();sheet(b.dataset.b)})};
 
-function sheet(id){const r=R.find(x=>x.id===id),t=new Date().toISOString().slice(0,10),ts=[];for(let h=r.h[0];h<r.h[1];h++)ts.push(hh(h),hh(h).replace(":00",":30"));
+function sheet(id){const r=R.find(x=>x.id===id),t=new Date().toISOString().slice(0,10),ts=[];for(let h=9;h<22;h++)ts.push(hh(h),hh(h).replace(":00",":30"));
 const o=document.createElement("div");o.className="ov";
-o.innerHTML=`<div class="sh"><h2>Book at ${r.n}</h2><p class="sub" style="margin:0 0 12px">Choose a date, time and party size.</p><label class="sub">Date</label><input type="date" id="bd" min="${t}" value="${t}"><label class="sub">Time</label><select id="bt">${ts.map(x=>`<option>${x}</option>`).join("")}</select><label class="sub">Guests</label><select id="bg">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join("")}</select><button class="btn" id="bc" style="margin-top:8px">Confirm booking</button><button class="btn s" id="bx" style="margin-top:8px">Close</button></div>`;
+o.innerHTML=`<div class="sh"><h2>Book at ${esc(r.n)}</h2><p class="sub" style="margin:0 0 12px">Choose a date, time and party size.</p><label class="sub">Date</label><input type="date" id="bd" min="${t}" value="${t}"><label class="sub">Time</label><select id="bt">${ts.map(x=>`<option>${x}</option>`).join("")}</select><label class="sub">Guests</label><select id="bg">${[1,2,3,4,5,6,7,8].map(n=>`<option>${n}</option>`).join("")}</select><button class="btn" id="bc" style="margin-top:8px">Confirm booking</button><button class="btn s" id="bx" style="margin-top:8px">Close</button></div>`;
 document.body.appendChild(o);o.onclick=e=>{if(e.target===o)o.remove()};$("#bx").onclick=()=>o.remove();
 $("#bc").onclick=()=>{const d=$("#bd").value;if(!d){toast("Choose a date");return}S.bk.push({k:Date.now(),id,d,tm:$("#bt").value,g:+$("#bg").value});save();o.remove();toast("Booked at "+r.n);if(!cur)render()}}
 
-views.hist=()=>`<h1>Visited</h1><p class="sub">Restaurants you’ve opened with Umber.</p><div style="margin-top:14px">${S.vis.length?S.vis.map(v=>{const r=R.find(x=>x.id===v.id);return `<div class="g row" data-o="${r.id}"><div class="av">${ini(r)}</div><div style="flex:1"><b>${r.n}</b><div class="sub">${new Date(v.t).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}</div></div><span class="sub">View menu</span></div>`}).join(""):`<div class="g sub" style="padding:22px;text-align:center">Nothing yet. Scan a QR to open your first menu.</div>`}</div>`;
+views.hist=()=>`<h1>Visited</h1><p class="sub">Restaurants you’ve opened with Umber.</p><div style="margin-top:14px">${S.vis.length?S.vis.map(v=>{const r=R.find(x=>x.id===v.id);if(!r)return"";return `<div class="g row" data-o="${r.id}">${av(r)}<div style="flex:1"><b>${esc(r.n)}</b><div class="sub">${new Date(v.t).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})}</div></div><span class="sub">View menu</span></div>`}).join(""):`<div class="g sub" style="padding:22px;text-align:center">Nothing yet. Scan a QR to open your first menu.</div>`}</div>`;
 bind.hist=bindOpen;
 
-views.me=()=>`<h1>Account</h1><div class="g" style="padding:18px;margin:14px 0 20px;display:flex;gap:14px;align-items:center"><div class="av" style="width:56px;height:56px;border-radius:18px">${S.user.name[0]}</div><div><b>${S.user.name}</b><div class="sub">${S.user.email}</div></div></div>
+views.me=()=>`<h1>Account</h1><div class="g" style="padding:18px;margin:14px 0 20px"><div style="display:flex;gap:14px;align-items:center;margin-bottom:12px">${S.user.photo?`<img class="av" src="${S.user.photo}" style="width:56px;height:56px;border-radius:18px;object-fit:cover">`:`<div class="av" style="width:56px;height:56px;border-radius:18px">${esc(S.user.name[0]||"?")}</div>`}<div><b>${esc(S.user.name)}</b><div class="sub">${esc(S.user.email)}</div></div></div><input id="pf" type="file" accept="image/*"><input id="pn" value="${esc(S.user.name)}" placeholder="Your name"><button class="btn" id="ps">Save profile</button></div>
 <h2>Appearance</h2><div class="chips">${["auto","light","dark"].map(t=>`<button class="chip ${S.th===t?"on":""}" data-th="${t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}</div>
 <h2>Distance</h2><div class="chips"><button class="chip ${S.mi?"":"on"}" data-u="km">Kilometres</button><button class="chip ${S.mi?"on":""}" data-u="mi">Miles</button></div>
 <h2>Payments</h2><div class="g sub" style="padding:14px;margin:6px 0 20px">No payment methods needed right now.</div>
 <button class="btn s" id="so">Sign out</button>`;
-bind.me=()=>{document.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{S.th=b.dataset.th;save();render()});
+function profileBind(){let ph;$("#pf").onchange=async e=>{try{ph=await pic(e.target.files[0],192,192);toast("Photo ready, tap Save")}catch(x){toast("That image didn’t load")}};
+$("#ps").onclick=()=>{const d={name:$("#pn").value.trim()||S.user.name};if(ph)d.photo=ph;Object.assign(S.user,d);render();if(window.FS)FS.setDoc(FS.doc(FS.db,"customers",S.user.uid),d,{merge:true}).then(()=>toast("Profile saved")).catch(()=>toast("Couldn’t save your profile"))}}
+bind.me=()=>{profileBind();document.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{S.th=b.dataset.th;save();render()});
 document.querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>{S.mi=b.dataset.u==="mi";save();render()});
 $("#so").onclick=()=>FB.out()};
 
@@ -136,7 +137,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.
 bind[tab]()}
 function hashOpen(){const r=find(location.hash);if(r){S.user?openMenu(r.id):pend=r.id}}
 addEventListener("hashchange",hashOpen);
-addEventListener("umber-user",e=>{const u=e.detail;ar=true;if(u){let d={};try{d=JSON.parse(localStorage.getItem(K+u.uid)||"{}")}catch(x){}S={vis:[],bk:[],mi:false,th:"auto",...d,user:u}}else{S.user=null;cur=null}render();hashOpen()});
+addEventListener("umber-user",e=>{const u=e.detail;ar=true;if(u){let d={};try{d=JSON.parse(localStorage.getItem(K+u.uid)||"{}")}catch(x){}S={vis:[],bk:[],mi:false,th:"auto",...d,user:u}}else{S.user=null;cur=null}startR();render();hashOpen();if(u&&window.FS)FS.getDoc(FS.doc(FS.db,"customers",u.uid)).then(c=>{if(c.exists()){Object.assign(S.user,c.data());render()}}).catch(()=>{})});
 setTimeout(()=>{if(!ar){ar=true;render()}},6000);
 render();hashOpen();
 </script></body></html>
