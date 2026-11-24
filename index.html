@@ -172,7 +172,7 @@ a.innerHTML=`<main>${views[tab]()}</main><nav><div class="g">${[["scan","Scan"],
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render();scrollTo(0,0)});
 bind[tab]()}
 function crew(rid,sid){const k=rid+sid;if(!window.FS||crew.k===k)return;crew.k=k;setTimeout(()=>crew.k="",4000);
-FS.getDoc(FS.doc(FS.db,"restaurants",rid,"crew",sid)).then(d=>{if(!d.exists()){toast("That team member isn’t available");return}const c=d.data(),st=R.find(x=>x.id===rid),L={owner:"Owner",manager:"Manager",developer:"Team",admin:"Server"},o=document.createElement("div");o.className="ov";o.style.zIndex=30;
+FS.getDoc(FS.doc(FS.db,"restaurants",rid,"crew",sid)).then(d=>{if(!d.exists()){toast("That team member isn’t available");return}const c=d.data(),st=R.find(x=>x.id===rid),L={owner:"Owner",manager:"Manager",developer:"Editor",admin:"Worker"},o=document.createElement("div");o.className="ov";o.style.zIndex=30;
 o.innerHTML=`<div class="sh" style="text-align:center">${c.photo?`<img src="${c.photo}" style="width:110px;height:110px;border-radius:32px;object-fit:cover">`:`<div class="av" style="width:110px;height:110px;border-radius:32px;margin:0 auto;font-size:36px">${esc((c.name||"?")[0]).toUpperCase()}</div>`}<h2 style="margin:12px 0 0">${esc(c.name)}</h2><div class="sub">${L[c.role]||"Team"}${st?" at "+esc(st.n):""}</div><button class="btn s" id="cx" style="margin-top:16px">Close</button></div>`;
 document.body.appendChild(o);o.onclick=e=>{if(e.target===o)o.remove()};$("#cx").onclick=()=>o.remove()}).catch(()=>toast("Couldn’t load that profile"))}
 function hashOpen(){const w=location.hash.match(/^#w:([^:]+):(.+)$/);if(w){if(S.user)crew(w[1],w[2]);return}const r=find(location.hash);if(r){S.user?openMenu(r.id):pend=r.id}}
