@@ -51,6 +51,7 @@ input,select{width:100%;padding:13px 14px;border-radius:14px;border:1px solid va
 .tb small{color:var(--t2);font-size:11px}.tb.off{opacity:.4}
 .av.sm{width:30px;height:30px;border-radius:10px;font-size:13px}.mrow{display:flex;gap:8px;align-items:flex-end;align-self:flex-start;max-width:92%}.mrow .bub{align-self:auto}
 .dot{position:absolute;width:10px;height:10px;border-radius:50%;background:#e5484d;border:2px solid var(--bg1)}nav button{position:relative;min-width:58px}nav button .dot{top:6px;left:calc(50% + 6px)}#bell{position:relative}#bell .dot{top:1px;right:1px}.dot2{width:12px;height:12px;border-radius:50%;background:#e5484d;flex:none}nav .g{overflow-x:auto}nav .g::-webkit-scrollbar{display:none}
+.bellb{background:none;border:0;color:var(--tx);padding:6px;cursor:pointer;line-height:0}
 </style></head>
 <body>
 <div id="app"><main class="c sub">Loading…</main></div>
@@ -85,7 +86,7 @@ onSnapshot(query(collection(db,"staff"),where("rid","==",M.rid)),s=>{T=s.docs.ma
 if(has("owner","manager","developer"))un.push(onSnapshot(collection(db,...b,"floors"),s=>{FL=s.docs.map(d=>({id:d.id,...d.data()}));redraw("map")},err),onSnapshot(collection(db,...b,"tables"),s=>{TB=s.docs.map(d=>({id:d.id,...d.data()}));if(!dr)redraw("map")},err),onSnapshot(collection(db,...b,"bookings"),s=>{BK=s.docs.map(d=>({id:d.id,...d.data()}));redraw("map")},err));
 if(has("owner","manager"))un.push(onSnapshot(collection(db,...b,"notices"),s=>{NT=s.docs.map(d=>({id:d.id,...d.data()}));badge()},err));
 if(has("owner","manager","developer"))un.push(onSnapshot(has("owner","manager")?collection(db,...b,"logs"):query(collection(db,...b,"logs"),where("lvl","==","all")),s=>{LG=s.docs.map(d=>({id:d.id,...d.data()}));redraw("log")},err));
-un.push(onSnapshot(has("owner","manager","developer")?collection(db,...b,"chats"):query(collection(db,...b,"chats"),where("members","array-contains",U.email)),s=>{CH=s.docs.map(d=>({id:d.id,...d.data()}));if(cc)seen(cc);if(!cc||!$("#ms"))redraw("chat");badge()},err));
+un.push(onSnapshot(has("owner","manager","developer")?collection(db,...b,"chats"):query(collection(db,...b,"chats"),where("members","array-contains",U.email)),s=>{CH=s.docs.map(d=>({id:d.id,...d.data()}));if(cc&&tab==="chat"&&$("#ms"))seen(cc);if(!cc||!$("#ms"))redraw("chat");badge()},err));
 if(has("owner","manager","admin"))un.push(onSnapshot(query(collection(db,...b,"orders"),where("open","==",true)),s=>{O=s.docs.map(d=>({id:d.id,...d.data()}));redraw("orders")},err))}
 if(isP())un.push(onSnapshot(collection(db,"restaurants"),s=>{RL=s.docs.map(d=>({id:d.id,...d.data()}));redraw("plat")},err))}
 
@@ -150,7 +151,7 @@ B.chat=()=>{if(!cc){if($("#nc"))$("#nc").onclick=newChat;document.querySelectorA
 $("#cb").onclick=()=>{cc="";unM&&unM();MS=[];redraw()};if($("#ge"))$("#ge").onclick=()=>gSheet(CH.find(x=>x.id===cc));if($("#gd"))$("#gd").onclick=()=>delChat(CH.find(x=>x.id===cc));
 const send=()=>{const i=$("#mt");if(!i)return;const x=i.value.trim();if(!x)return;i.value="";addDoc(collection(db,"restaurants",M.rid,"chats",cc,"msgs"),{text:x,from:U.email,name:M.name,t:serverTimestamp()}).then(()=>updateDoc(doc(db,"restaurants",M.rid,"chats",cc),{last:{text:x.slice(0,80),from:U.email,t:serverTimestamp()}})).catch(err)};
 if($("#mg")){$("#mg").onclick=send;$("#mt").onkeydown=e=>{if(e.key==="Enter")send()}}
-const e=$("#ms");e&&e.lastElementChild&&e.lastElementChild.scrollIntoView()};
+const e=$("#ms");e&&e.lastElementChild&&e.lastElementChild.scrollIntoView();seen(cc)};
 let FL=[],TB=[],BK=[],mf="",dr=false;
 const day=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")},DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 V.map=()=>{const fls=FL.slice().sort((a,b)=>(a.order||0)-(b.order||0));if(!fls.find(f=>f.id===mf))mf=fls[0]?fls[0].id:"";const f=fls.find(x=>x.id===mf)||{};
@@ -183,7 +184,7 @@ const cop=v=>"$"+Number(v).toLocaleString("es-CO")+" COP";
 function quote(id,cy,ex){const p=PLANS[id],s={...p.inc};s.manager+=ex.manager||0;s.developer+=ex.developer||0;s.admin+=(ex.admin||0)+3*(ex.c3||0);return{seats:s,base:cy==="annual"?p.a:p.m,xt:(ex.manager||0)*p.x.manager+(ex.developer||0)*p.x.developer+(ex.admin||0)*p.x.admin+(ex.c3||0)*p.x.c3}}
 const addP=(d,cy)=>{const t=new Date(d+"T12:00:00");cy==="annual"?t.setFullYear(t.getFullYear()+1):t.setMonth(t.getMonth()+1);return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0")};
 const exv=()=>{const o={};["manager","developer","admin","c3"].forEach(k=>o[k]=Math.max(0,parseInt($("#x_"+k).value)||0));return o};
-const megaSvg='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 9a4 4 0 0 1 0 6M18 7a7 7 0 0 1 0 10"/></svg>';
+const megaSvg='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>';
 const lg=(kind,text)=>addDoc(collection(db,"restaurants",M.rid,"logs"),{by:U.email,name:M.name||U.name,kind,text,lvl:kind==="chat"||kind==="user"?"mgr":"all",t:serverTimestamp()}).catch(()=>{});
 const notice=(rid,title,body,auto)=>addDoc(collection(db,"restaurants",rid,"notices"),{title,body,auto:!!auto,t:serverTimestamp()});
 const unread=c=>c.members.includes(U.email)&&c.last&&c.last.from&&c.last.from!==U.email&&c.last.t&&c.last.t.seconds*1000>Math.max(SN[c.id]||0,SN.__init||0),unreadAny=()=>CH.some(unread);
@@ -218,7 +219,7 @@ $("#gp").onclick=()=>signInWithEmailAndPassword(auth,$("#ae").value.trim(),$("#a
 const t=tabs();
 if(!t.length){a.innerHTML=`<main class="c"><div class="g box"><h2>No store linked</h2><p class="sub">${esc(U.email)} isn’t registered with a store yet. Ask your Umber contact to add it.</p>${U.email===PLAT.toLowerCase()?`<p class="sub">Platform admin? Sign out and use your email and password.</p>`:""}<button class="btn s" id="out">Sign out</button></div></main>`;$("#out").onclick=()=>signOut(auth);return}
 if(!t.find(x=>x[0]===tab))tab=t[0][0];
-a.innerHTML=`<main><div class="top"><div><h1 id="hn">${RS?esc(RS.name):"Umber Hub"}</h1><div class="sub">${esc(U.name)}, ${M?RN[M.role]:"platform"}</div></div><span style="display:flex;gap:8px;align-items:center">${has("owner","manager")?`<button class="chip" id="bell">${megaSvg}</button>`:""}<button class="chip" id="out">Sign out</button></span></div><div id="v"></div></main><nav><div class="g">${t.map(([k,l])=>`<button data-t="${k}" class="${tab===k?"on":""}">${ic(k)}<span>${l}</span></button>`).join("")}</div></nav>`;
+a.innerHTML=`<main><div class="top"><div><h1 id="hn">${RS?esc(RS.name):"Umber Hub"}</h1><div class="sub">${esc(U.name)}, ${M?RN[M.role]:"platform"}</div></div><span style="display:flex;gap:8px;align-items:center">${has("owner","manager")?`<button id="bell" class="bellb" aria-label="Notifications">${megaSvg}</button>`:""}<button class="chip" id="out">Sign out</button></span></div><div id="v"></div></main><nav><div class="g">${t.map(([k,l])=>`<button data-t="${k}" class="${tab===k?"on":""}">${ic(k)}<span>${l}</span></button>`).join("")}</div></nav>`;
 $("#out").onclick=()=>signOut(auth);if($("#bell"))$("#bell").onclick=openNotices;
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
 redraw();badge()}
